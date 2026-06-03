@@ -6,11 +6,37 @@ import base64
 import html
 from io import BytesIO
 from datetime import datetime
-from PIL import Image, ExifTags
+from PIL import Image, ExifTags, ImageOps
 import folium
 
 SITE_GROUP_RADIUS_KM = 0.5
 THUMBNAIL_SIZE = (360, 260)
+ROUTE_ARROW_ZOOM = 5
+ROUTE_ARROW_MIN_PIXEL_DISTANCE = 28
+JYOTIRLINGA_MARKER_COLOR = "#ff6600"
+TEEN_DHAM_MARKER_COLOR = "#ffc400"
+DEFAULT_MARKER_COLOR = "#d71920"
+
+JYOTIRLINGA_SITES = [
+    ("Somnath", 20.8880, 70.4012),
+    ("Mallikarjuna", 16.0733, 78.8684),
+    ("Mahakaleshwar", 23.1828, 75.7681),
+    ("Omkareshwar", 22.2456, 76.1519),
+    ("Kedarnath", 30.7352, 79.0669),
+    ("Bhimashankar", 19.0714, 73.5357),
+    ("Kashi Vishwanath", 25.3109, 83.0107),
+    ("Trimbakeshwar", 19.9321, 73.5317),
+    ("Baidyanath", 24.4922, 86.6990),
+    ("Nageshwar", 22.3352, 69.0876),
+    ("Rameswaram", 9.2881, 79.3174),
+    ("Grishneshwar", 20.0248, 75.1791),
+]
+
+TEEN_DHAM_SITES = [
+    ("Jagannath Puri", 19.8047, 85.8179),
+    ("Dwarkadhish", 22.2376, 68.9674),
+    ("Rameswaram", 9.2881, 79.3174),
+]
 
 
 # Approximate state/UT capital coordinates
@@ -184,9 +210,75 @@ def group_photos_by_site(photo_infos, radius_km=SITE_GROUP_RADIUS_KM):
     return groups
 
 
+def matching_named_site(point, named_sites, radius_km=SITE_GROUP_RADIUS_KM):
+    for name, lat, lon in named_sites:
+        if distance_km(point, [lat, lon]) <= radius_km:
+            return name
+
+    return None
+
+
+def classify_site(point):
+    dham_name = matching_named_site(point, TEEN_DHAM_SITES)
+    if dham_name:
+        return "teen_dham", dham_name
+
+    jyotirlinga_name = matching_named_site(point, JYOTIRLINGA_SITES)
+    if jyotirlinga_name:
+        return "jyotirlinga", jyotirlinga_name
+
+    return None, None
+
+
+def build_colored_camera_icon(color, icon_color="white"):
+    return folium.DivIcon(
+        class_name="colored-camera-marker",
+        icon_size=(30, 30),
+        icon_anchor=(15, 28),
+        popup_anchor=(0, -28),
+        html=f"""
+        <div style="position: relative; width: 30px; height: 30px;">
+            <div style="
+                background: {color};
+                border: 2px solid white;
+                border-radius: 50% 50% 50% 0;
+                box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+                height: 24px;
+                left: 3px;
+                position: absolute;
+                top: 0;
+                transform: rotate(-45deg);
+                width: 24px;
+            "></div>
+            <i class="fa fa-camera" style="
+                color: {icon_color};
+                font-size: 13px;
+                left: 8px;
+                line-height: 24px;
+                position: absolute;
+                text-align: center;
+                top: 1px;
+                width: 16px;
+            "></i>
+        </div>
+        """,
+    )
+
+
+def build_site_icon(site_category):
+    if site_category == "jyotirlinga":
+        return build_colored_camera_icon(JYOTIRLINGA_MARKER_COLOR)
+
+    if site_category == "teen_dham":
+        return build_colored_camera_icon(TEEN_DHAM_MARKER_COLOR, "#5a3d00")
+
+    return build_colored_camera_icon(DEFAULT_MARKER_COLOR)
+
+
 def photo_to_data_uri(image_path):
     try:
         with Image.open(image_path) as image:
+            image = ImageOps.exif_transpose(image)
             image.thumbnail(THUMBNAIL_SIZE)
             if image.mode not in ("RGB", "L"):
                 image = image.convert("RGB")
@@ -282,6 +374,28 @@ def interpolate_point(start, end, fraction=0.8):
     ]
 
 
+def lat_lon_to_pixel(point, zoom=ROUTE_ARROW_ZOOM):
+    lat, lon = point
+    sin_lat = math.sin(math.radians(lat))
+    sin_lat = min(max(sin_lat, -0.9999), 0.9999)
+    scale = 256 * (2 ** zoom)
+
+    x = (lon + 180) / 360 * scale
+    y = (
+        0.5
+        - math.log((1 + sin_lat) / (1 - sin_lat)) / (4 * math.pi)
+    ) * scale
+
+    return x, y
+
+
+def points_overlap(point_a, point_b, min_pixel_distance=ROUTE_ARROW_MIN_PIXEL_DISTANCE):
+    x1, y1 = lat_lon_to_pixel(point_a)
+    x2, y2 = lat_lon_to_pixel(point_b)
+
+    return math.hypot(x2 - x1, y2 - y1) < min_pixel_distance
+
+
 def add_direction_arrow(map_obj, start, end, fraction):
     if start == end:
         return
@@ -308,6 +422,19 @@ def add_direction_arrow(map_obj, start, end, fraction):
             """,
         ),
     ).add_to(map_obj)
+
+
+def add_route_arrows(map_obj, route_points):
+    arrow_locations = []
+
+    for start, end in zip(route_points, route_points[1:]):
+        for fraction in (0.2, 0.5):
+            arrow_location = interpolate_point(start, end, fraction)
+            if any(points_overlap(arrow_location, existing) for existing in arrow_locations):
+                continue
+
+            add_direction_arrow(map_obj, start, end, fraction)
+            arrow_locations.append(arrow_location)
 
 
 def create_map(photo_infos, output_html, states_geojson=None):
@@ -385,6 +512,7 @@ def create_map(photo_infos, output_html, states_geojson=None):
 
     for idx, site in enumerate(sites, start=1):
         lat, lon = site["center"]
+        site_category, matched_site_name = classify_site([lat, lon])
         route_points.append([lat, lon])
         photo_count = len(site["photos"])
         first_file = site["photos"][0]["file"]
@@ -392,12 +520,14 @@ def create_map(photo_infos, output_html, states_geojson=None):
         if photo_count != 1:
             tooltip += "s"
         tooltip += f" near {first_file}"
+        if matched_site_name:
+            tooltip += f" ({matched_site_name})"
 
         folium.Marker(
             location=[lat, lon],
             popup=folium.Popup(build_site_popup(site, idx), max_width=320),
             tooltip=tooltip,
-            icon=folium.Icon(color="red", icon="camera", prefix="fa")
+            icon=build_site_icon(site_category)
         ).add_to(india_map)
 
     # Draw route line
@@ -410,9 +540,7 @@ def create_map(photo_infos, output_html, states_geojson=None):
             tooltip="Photo route by time"
         ).add_to(india_map)
 
-        for start, end in zip(route_points, route_points[1:]):
-            add_direction_arrow(india_map, start, end, 0.2)
-            add_direction_arrow(india_map, start, end, 0.5)
+        add_route_arrows(india_map, route_points)
 
     folium.LayerControl().add_to(india_map)
     india_map.save(output_html)
