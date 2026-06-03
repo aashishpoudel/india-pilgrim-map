@@ -4,6 +4,7 @@ import argparse
 import math
 import base64
 import html
+import re
 from io import BytesIO
 from datetime import datetime
 from PIL import Image, ExifTags, ImageOps
@@ -61,21 +62,61 @@ UNVISITED_JYOTIRLINGA_SITES = [
 ]
 
 SPECIAL_SITE_POPUP_NAMES = {
-    "Somnath": "Somnath (सोमनाथ)",
-    "Mallikarjuna": "Mallikarjunga (मल्लिकार्जुन)",
-    "Mahakaleshwar": "Mahakaleshwar (महाकालेश्वर)",
-    "Omkareshwar": "Omkareshwar (ओंकारेश्वर)",
-    "Kedarnath": "Kedarnath (केदारनाथ)",
-    "Bhimashankar": "Bhimashankar (भीमाशंकर)",
-    "Kashi Vishwanath": "Kashi Vishwanath (काशी विश्वनाथ)",
-    "Trimbakeshwar": "Trimbakeshwar (त्र्यंबकेश्वर)",
-    "Baidyanath": "Baidyanath (बैद्यनाथ)",
-    "Nageshwar": "Nageshwar (नागेश्वर)",
-    "Rameswaram": "Rameswaram (रामेश्वरम्)",
-    "Grishneshwar": "Grishneshwar (घृष्णेश्वर)",
-    "Jagannath Puri": "Jagannath Puri (जगन्नाथ पुरी)",
-    "Dwarkadhish": "Dwarkadhish (द्वारकाधीश)",
+    "Somnath": "Somnath (सोमनाथ), Somnath",
+    "Mallikarjuna": "Mallikarjunga (मल्लिकार्जुन), Srisailam",
+    "Mahakaleshwar": "Mahakaleshwar (महाकालेश्वर), Ujjain",
+    "Omkareshwar": "Omkareshwar (ओंकारेश्वर), Omkareshwar",
+    "Kedarnath": "Kedarnath (केदारनाथ), Kedarnath",
+    "Bhimashankar": "Bhimashankar (भीमाशंकर), Bhimashankar",
+    "Kashi Vishwanath": "Kashi Vishwanath (काशी विश्वनाथ), Varanasi",
+    "Trimbakeshwar": "Trimbakeshwar (त्र्यंबकेश्वर), Trimbak",
+    "Baidyanath": "Baidyanath (बैद्यनाथ), Parli Vaijnath",
+    "Nageshwar": "Nageshwar (नागेश्वर), Dwarka",
+    "Rameswaram": "Rameswaram (रामेश्वरम्), Rameswaram",
+    "Grishneshwar": "Grishneshwar (घृष्णेश्वर), Ellora",
+    "Jagannath Puri": "Jagannath Puri (जगन्नाथ पुरी), Puri",
+    "Dwarkadhish": "Dwarkadhish (द्वारकाधीश), Dwarka",
 }
+
+PLACE_LABELS = [
+    ("Pashupatinath Temple, Kathmandu", 27.7108, 85.3481, 3),
+    ("Patna", 25.5941, 85.1376, 35),
+    ("Punpun, Patna", 25.5011, 85.1022, 5),
+    ("Bodh Gaya", 24.6972, 84.9920, 8),
+    ("Hazaribagh", 24.3690, 85.4832, 20),
+    ("Tarapith Temple, Tarapith", 24.3945, 87.0870, 5),
+    ("Gangasagar", 21.8846, 88.1655, 15),
+    ("Sagar Island", 21.6350, 88.0780, 8),
+    ("Kolkata", 22.4366, 88.2922, 20),
+    ("Chandaneswar Temple, Digha", 21.7635, 87.1630, 8),
+    ("Puri", 19.8650, 86.1125, 15),
+    ("Konark Sun Temple, Konark", 19.8877, 86.0958, 8),
+    ("Draksharamam Temple, Draksharamam", 17.2834, 82.4030, 8),
+    ("Kanaka Durga Temple, Vijayawada", 16.3837, 80.5326, 12),
+    ("Kanchipuram", 12.8467, 79.7006, 10),
+    ("Kanchipuram", 12.8190, 79.7247, 10),
+    ("Mahabalipuram", 12.6085, 80.0580, 10),
+    ("Srirangam Temple, Tiruchirappalli", 10.8623, 78.6899, 8),
+    ("Dhanushkodi, Rameswaram", 9.1506, 79.4491, 10),
+    ("Kanyakumari", 8.0795, 77.5512, 10),
+    ("Padmanabhaswamy Temple, Thiruvananthapuram", 8.3965, 76.9730, 10),
+    ("Virupaksha Temple, Hampi", 15.3546, 76.4697, 8),
+    ("Shirdi", 19.3813, 74.8579, 10),
+    ("Shani Shingnapur", 19.3733, 74.7454, 8),
+    ("Nashik", 20.0063, 73.7928, 12),
+    ("Bharuch", 21.7192, 73.0454, 15),
+    ("Chotila", 22.5499, 71.5934, 12),
+    ("Girnar, Junagadh", 21.5278, 70.5260, 8),
+    ("Porbandar", 21.7741, 69.4533, 12),
+    ("Dwarka", 22.3695, 69.1082, 12),
+    ("Sanand, Ahmedabad", 23.0564, 72.0417, 20),
+    ("Siddhpur", 23.9090, 72.3646, 20),
+    ("Ujjain", 23.2181, 75.7686, 8),
+    ("Omkareshwar Road", 22.1883, 76.0707, 12),
+    ("Khajuraho", 25.1580, 80.8760, 20),
+    ("Prayagraj", 25.4252, 81.8834, 15),
+    ("Vindhyachal", 25.1641, 82.5058, 12),
+]
 
 
 # Approximate state/UT capital coordinates
@@ -185,6 +226,43 @@ def extract_photo_info(image_path):
     }
 
 
+def photo_duplicate_key(photo):
+    stem = os.path.splitext(photo["file"])[0].upper()
+    normalized_stem = re.sub(r"^IMG_E(\d+)$", r"IMG_\1", stem)
+
+    return (
+        normalized_stem,
+        photo["taken_time"],
+        round(photo["lat"], 5),
+        round(photo["lon"], 5),
+    )
+
+
+def prefer_original_photo(candidate, existing):
+    candidate_stem = os.path.splitext(candidate["file"])[0].upper()
+    existing_stem = os.path.splitext(existing["file"])[0].upper()
+    candidate_is_edit = candidate_stem.startswith("IMG_E")
+    existing_is_edit = existing_stem.startswith("IMG_E")
+
+    if candidate_is_edit == existing_is_edit:
+        return candidate["file"] < existing["file"]
+
+    return not candidate_is_edit
+
+
+def remove_duplicate_photos(photo_infos):
+    unique_photos = {}
+
+    for photo in photo_infos:
+        key = photo_duplicate_key(photo)
+        existing = unique_photos.get(key)
+
+        if not existing or prefer_original_photo(photo, existing):
+            unique_photos[key] = photo
+
+    return sorted(unique_photos.values(), key=lambda x: x["taken_time"])
+
+
 def collect_photos(folder):
     photo_infos = []
 
@@ -209,7 +287,7 @@ def collect_photos(folder):
 
     photo_infos.sort(key=lambda x: x["taken_time"])
 
-    return photo_infos
+    return remove_duplicate_photos(photo_infos)
 
 
 def distance_km(point_a, point_b):
@@ -267,6 +345,21 @@ def matching_named_sites(point, named_sites, radius_km=SITE_GROUP_RADIUS_KM):
     return matches
 
 
+def matching_place_label(point):
+    closest_label = None
+    closest_distance = None
+
+    for label, lat, lon, radius_km in PLACE_LABELS:
+        distance = distance_km(point, [lat, lon])
+        if distance <= radius_km and (
+            closest_distance is None or distance < closest_distance
+        ):
+            closest_label = label
+            closest_distance = distance
+
+    return closest_label
+
+
 def classify_site_matches(point):
     matches = []
 
@@ -301,6 +394,7 @@ def prepare_sites_for_display(sites):
         site_copy["matches"] = site_matches
         site_copy["category"] = site_category
         site_copy["matched_name"] = matched_site_name
+        site_copy["place_label"] = matching_place_label(site["center"])
         site_copy["suppressed"] = False
         site_copy["route_site"] = site_copy
         prepared_sites.append(site_copy)
@@ -400,10 +494,17 @@ def marker_rotation(site, site_category):
     return 0
 
 
-def site_popup_title(site_number, matched_site_name):
+def site_display_label(matched_site_name=None, place_label=None):
     if matched_site_name:
-        site_name = SPECIAL_SITE_POPUP_NAMES.get(matched_site_name, matched_site_name)
-        return f"Site {site_number} - {site_name}"
+        return SPECIAL_SITE_POPUP_NAMES.get(matched_site_name, matched_site_name)
+
+    return place_label
+
+
+def site_popup_title(site_number, matched_site_name=None, place_label=None):
+    label = site_display_label(matched_site_name, place_label)
+    if label:
+        return f"Site {site_number} - {label}"
 
     return f"Site {site_number}"
 
@@ -432,10 +533,10 @@ def format_time(taken_time):
     return taken_time.strftime("%Y-%m-%d %H:%M:%S")
 
 
-def build_site_popup(site, site_number, matched_site_name=None):
+def build_site_popup(site, site_number, matched_site_name=None, place_label=None):
     photos = site["photos"]
     popup_id = f"site-{site_number}"
-    popup_title = html.escape(site_popup_title(site_number, matched_site_name))
+    popup_title = html.escape(site_popup_title(site_number, matched_site_name, place_label))
     photo_slides = []
 
     for photo_index, photo in enumerate(photos):
@@ -758,22 +859,18 @@ def create_map(photo_infos, output_html, states_geojson=None):
     for site, site_category, matched_site_name in marker_entries:
         lat, lon = site["center"]
         site_number = site["display_number"]
-        photo_count = len(site["photos"])
-        first_file = site["photos"][0]["file"]
-        if matched_site_name:
-            tooltip = f"Site {site_number} - {photo_count} photo"
-            if photo_count != 1:
-                tooltip += "s"
-            tooltip += f" near {matched_site_name}"
-        else:
-            tooltip = f"{site_number}. {photo_count} photo"
-            if photo_count != 1:
-                tooltip += "s"
-            tooltip += f" near {first_file}"
+        place_label = site["place_label"]
+        label = site_display_label(matched_site_name, place_label)
+        tooltip = f"Site {site_number}"
+        if label:
+            tooltip += f" - {label}"
 
         folium.Marker(
             location=[lat, lon],
-            popup=folium.Popup(build_site_popup(site, site_number, matched_site_name), max_width=320),
+            popup=folium.Popup(
+                build_site_popup(site, site_number, matched_site_name, place_label),
+                max_width=320
+            ),
             tooltip=tooltip,
             icon=build_site_icon(site_category, marker_rotation(site, site_category)),
             z_index_offset=marker_z_index_offset(site_category)
