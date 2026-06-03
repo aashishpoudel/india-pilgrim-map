@@ -13,19 +13,32 @@ SITE_GROUP_RADIUS_KM = 0.5
 THUMBNAIL_SIZE = (360, 260)
 ROUTE_ARROW_ZOOM = 5
 ROUTE_ARROW_MIN_PIXEL_DISTANCE = 28
-JYOTIRLINGA_MARKER_COLOR = "#ff6600"
-TEEN_DHAM_MARKER_COLOR = "#ffc400"
+JYOTIRLINGA_MARKER_COLOR = "#ff7a00"
+TEEN_DHAM_MARKER_COLOR = "#ffd600"
 DEFAULT_MARKER_COLOR = "#d71920"
+SUPPRESS_RED_NEAR_SPECIAL_RADIUS_KM = 2.0
+MARKER_Z_INDEX_OFFSETS = {
+    "teen_dham": 3000,
+    "jyotirlinga": 2000,
+    None: 1000,
+}
+DUAL_MARKER_ROTATIONS = {
+    "teen_dham": -45,
+    "jyotirlinga": 45,
+}
 
 JYOTIRLINGA_SITES = [
     ("Somnath", 20.8880, 70.4012),
     ("Mallikarjuna", 16.0733, 78.8684),
+    ("Mallikarjuna", 16.0780, 78.8648),
     ("Mahakaleshwar", 23.1828, 75.7681),
     ("Omkareshwar", 22.2456, 76.1519),
     ("Kedarnath", 30.7352, 79.0669),
     ("Bhimashankar", 19.0714, 73.5357),
     ("Kashi Vishwanath", 25.3109, 83.0107),
+    ("Kashi Vishwanath", 25.3179, 83.0220),
     ("Trimbakeshwar", 19.9321, 73.5317),
+    ("Baidyanath", 18.8427, 76.5352),
     ("Baidyanath", 24.4922, 86.6990),
     ("Nageshwar", 22.3352, 69.0876),
     ("Rameswaram", 9.2881, 79.3174),
@@ -37,6 +50,32 @@ TEEN_DHAM_SITES = [
     ("Dwarkadhish", 22.2376, 68.9674),
     ("Rameswaram", 9.2881, 79.3174),
 ]
+
+UNVISITED_DHAM_SITES = [
+    ("Badrinath", "Badrinath (बद्रीनाथ)", 30.7433, 79.4938),
+]
+
+UNVISITED_JYOTIRLINGA_SITES = [
+    ("Kedarnath", "Kedarnath (केदारनाथ)", 30.7352, 79.0669),
+    ("Bhimashankar", "Bhimashankar (भीमाशंकर)", 19.0714, 73.5357),
+]
+
+SPECIAL_SITE_POPUP_NAMES = {
+    "Somnath": "Somnath (सोमनाथ)",
+    "Mallikarjuna": "Mallikarjunga (मल्लिकार्जुन)",
+    "Mahakaleshwar": "Mahakaleshwar (महाकालेश्वर)",
+    "Omkareshwar": "Omkareshwar (ओंकारेश्वर)",
+    "Kedarnath": "Kedarnath (केदारनाथ)",
+    "Bhimashankar": "Bhimashankar (भीमाशंकर)",
+    "Kashi Vishwanath": "Kashi Vishwanath (काशी विश्वनाथ)",
+    "Trimbakeshwar": "Trimbakeshwar (त्र्यंबकेश्वर)",
+    "Baidyanath": "Baidyanath (बैद्यनाथ)",
+    "Nageshwar": "Nageshwar (नागेश्वर)",
+    "Rameswaram": "Rameswaram (रामेश्वरम्)",
+    "Grishneshwar": "Grishneshwar (घृष्णेश्वर)",
+    "Jagannath Puri": "Jagannath Puri (जगन्नाथ पुरी)",
+    "Dwarkadhish": "Dwarkadhish (द्वारकाधीश)",
+}
 
 
 # Approximate state/UT capital coordinates
@@ -218,26 +257,101 @@ def matching_named_site(point, named_sites, radius_km=SITE_GROUP_RADIUS_KM):
     return None
 
 
-def classify_site(point):
-    dham_name = matching_named_site(point, TEEN_DHAM_SITES)
-    if dham_name:
-        return "teen_dham", dham_name
+def matching_named_sites(point, named_sites, radius_km=SITE_GROUP_RADIUS_KM):
+    matches = []
 
-    jyotirlinga_name = matching_named_site(point, JYOTIRLINGA_SITES)
-    if jyotirlinga_name:
-        return "jyotirlinga", jyotirlinga_name
+    for name, lat, lon in named_sites:
+        if distance_km(point, [lat, lon]) <= radius_km and name not in matches:
+            matches.append(name)
+
+    return matches
+
+
+def classify_site_matches(point):
+    matches = []
+
+    for name in matching_named_sites(point, TEEN_DHAM_SITES):
+        matches.append(("teen_dham", name))
+
+    for name in matching_named_sites(point, JYOTIRLINGA_SITES):
+        matches.append(("jyotirlinga", name))
+
+    return matches
+
+
+def classify_site(point):
+    matches = classify_site_matches(point)
+    if matches:
+        return matches[0]
 
     return None, None
 
 
-def build_colored_camera_icon(color, icon_color="white"):
+def prepare_sites_for_display(sites):
+    prepared_sites = []
+
+    for idx, site in enumerate(sites):
+        site_copy = {
+            "center": site["center"],
+            "photos": list(site["photos"]),
+            "original_index": idx,
+        }
+        site_matches = classify_site_matches(site["center"])
+        site_category, matched_site_name = site_matches[0] if site_matches else (None, None)
+        site_copy["matches"] = site_matches
+        site_copy["category"] = site_category
+        site_copy["matched_name"] = matched_site_name
+        site_copy["suppressed"] = False
+        site_copy["route_site"] = site_copy
+        prepared_sites.append(site_copy)
+
+    special_sites = [
+        site for site in prepared_sites
+        if site["category"] in ("jyotirlinga", "teen_dham")
+    ]
+
+    for site in prepared_sites:
+        if site["category"] or not special_sites:
+            continue
+
+        nearest_special = min(
+            special_sites,
+            key=lambda special: distance_km(site["center"], special["center"])
+        )
+        distance_to_special = distance_km(site["center"], nearest_special["center"])
+
+        if distance_to_special <= SUPPRESS_RED_NEAR_SPECIAL_RADIUS_KM:
+            site["suppressed"] = True
+            site["route_site"] = nearest_special
+            nearest_special["photos"].extend(site["photos"])
+            nearest_special["photos"].sort(key=lambda photo: photo["taken_time"])
+
+    display_sites = [site for site in prepared_sites if not site["suppressed"]]
+    route_sites = [site["route_site"] for site in prepared_sites]
+
+    route_points = []
+    for site in route_sites:
+        point = site["center"]
+        if not route_points or route_points[-1] != point:
+            route_points.append(point)
+
+    return display_sites, route_points
+
+
+def build_colored_camera_icon(color, icon_color="white", marker_rotation=0):
     return folium.DivIcon(
         class_name="colored-camera-marker",
         icon_size=(30, 30),
         icon_anchor=(15, 28),
         popup_anchor=(0, -28),
         html=f"""
-        <div style="position: relative; width: 30px; height: 30px;">
+        <div style="
+            position: relative;
+            width: 30px;
+            height: 30px;
+            transform: rotate({marker_rotation}deg);
+            transform-origin: 15px 28px;
+        ">
             <div style="
                 background: {color};
                 border: 2px solid white;
@@ -265,14 +379,33 @@ def build_colored_camera_icon(color, icon_color="white"):
     )
 
 
-def build_site_icon(site_category):
+def build_site_icon(site_category, marker_rotation=0):
     if site_category == "jyotirlinga":
-        return build_colored_camera_icon(JYOTIRLINGA_MARKER_COLOR)
+        return build_colored_camera_icon(JYOTIRLINGA_MARKER_COLOR, marker_rotation=marker_rotation)
 
     if site_category == "teen_dham":
-        return build_colored_camera_icon(TEEN_DHAM_MARKER_COLOR, "#5a3d00")
+        return build_colored_camera_icon(TEEN_DHAM_MARKER_COLOR, "#5a3d00", marker_rotation)
 
-    return build_colored_camera_icon(DEFAULT_MARKER_COLOR)
+    return build_colored_camera_icon(DEFAULT_MARKER_COLOR, marker_rotation=marker_rotation)
+
+
+def marker_z_index_offset(site_category):
+    return MARKER_Z_INDEX_OFFSETS.get(site_category, MARKER_Z_INDEX_OFFSETS[None])
+
+
+def marker_rotation(site, site_category):
+    if len(site.get("matches", [])) > 1:
+        return DUAL_MARKER_ROTATIONS.get(site_category, 0)
+
+    return 0
+
+
+def site_popup_title(site_number, matched_site_name):
+    if matched_site_name:
+        site_name = SPECIAL_SITE_POPUP_NAMES.get(matched_site_name, matched_site_name)
+        return f"Site {site_number} - {site_name}"
+
+    return f"Site {site_number}"
 
 
 def photo_to_data_uri(image_path):
@@ -299,9 +432,10 @@ def format_time(taken_time):
     return taken_time.strftime("%Y-%m-%d %H:%M:%S")
 
 
-def build_site_popup(site, site_number):
+def build_site_popup(site, site_number, matched_site_name=None):
     photos = site["photos"]
     popup_id = f"site-{site_number}"
+    popup_title = html.escape(site_popup_title(site_number, matched_site_name))
     photo_slides = []
 
     for photo_index, photo in enumerate(photos):
@@ -345,12 +479,40 @@ def build_site_popup(site, site_number):
 
     return f"""
     <div style="width: 270px;">
-        <b>Site {site_number}</b><br>
+        <b>{popup_title}</b><br>
         Photos: {len(photos)}<br>
         {"".join(photo_slides)}
         {controls}
     </div>
     """
+
+
+def add_unvisited_pilgrimage_dots(map_obj):
+    for name, display_name, lat, lon in UNVISITED_DHAM_SITES:
+        folium.CircleMarker(
+            location=[lat, lon],
+            radius=4,
+            color=TEEN_DHAM_MARKER_COLOR,
+            fill=True,
+            fill_color=TEEN_DHAM_MARKER_COLOR,
+            fill_opacity=0.95,
+            weight=2,
+            popup=display_name,
+            tooltip=name,
+        ).add_to(map_obj)
+
+    for name, display_name, lat, lon in UNVISITED_JYOTIRLINGA_SITES:
+        folium.CircleMarker(
+            location=[lat, lon],
+            radius=4,
+            color=JYOTIRLINGA_MARKER_COLOR,
+            fill=True,
+            fill_color=JYOTIRLINGA_MARKER_COLOR,
+            fill_opacity=0.95,
+            weight=2,
+            popup=display_name,
+            tooltip=name,
+        ).add_to(map_obj)
 
 
 def calculate_bearing(start, end):
@@ -506,28 +668,50 @@ def create_map(photo_infos, output_html, states_geojson=None):
             popup=f"{capital}<br>{state}"
         ).add_to(india_map)
 
-    # Add one marker per nearby-photo site.
-    route_points = []
-    sites = group_photos_by_site(photo_infos)
+    add_unvisited_pilgrimage_dots(india_map)
 
-    for idx, site in enumerate(sites, start=1):
+    # Add one marker per nearby-photo site.
+    sites, route_points = prepare_sites_for_display(group_photos_by_site(photo_infos))
+
+    red_sites = [site for site in sites if not site["category"]]
+    special_sites = [site for site in sites if site["category"]]
+
+    for idx, site in enumerate(red_sites + special_sites, start=1):
+        site["display_number"] = idx
+
+    marker_entries = []
+
+    for site in red_sites:
+        marker_entries.append((site, None, None))
+
+    for category in ("jyotirlinga", "teen_dham"):
+        for site in special_sites:
+            for site_category, matched_site_name in site["matches"]:
+                if site_category == category:
+                    marker_entries.append((site, site_category, matched_site_name))
+
+    for site, site_category, matched_site_name in marker_entries:
         lat, lon = site["center"]
-        site_category, matched_site_name = classify_site([lat, lon])
-        route_points.append([lat, lon])
+        site_number = site["display_number"]
         photo_count = len(site["photos"])
         first_file = site["photos"][0]["file"]
-        tooltip = f"{idx}. {photo_count} photo"
-        if photo_count != 1:
-            tooltip += "s"
-        tooltip += f" near {first_file}"
         if matched_site_name:
-            tooltip += f" ({matched_site_name})"
+            tooltip = f"Site {site_number} - {photo_count} photo"
+            if photo_count != 1:
+                tooltip += "s"
+            tooltip += f" near {matched_site_name}"
+        else:
+            tooltip = f"{site_number}. {photo_count} photo"
+            if photo_count != 1:
+                tooltip += "s"
+            tooltip += f" near {first_file}"
 
         folium.Marker(
             location=[lat, lon],
-            popup=folium.Popup(build_site_popup(site, idx), max_width=320),
+            popup=folium.Popup(build_site_popup(site, site_number, matched_site_name), max_width=320),
             tooltip=tooltip,
-            icon=build_site_icon(site_category)
+            icon=build_site_icon(site_category, marker_rotation(site, site_category)),
+            z_index_offset=marker_z_index_offset(site_category)
         ).add_to(india_map)
 
     # Draw route line
