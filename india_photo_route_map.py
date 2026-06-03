@@ -605,17 +605,17 @@ def add_fixed_legend(map_obj):
         <div style="display: flex; align-items: center; gap: 7px; margin: 2px 0; white-space: nowrap;">
             <span style="align-items: center; background: {DEFAULT_MARKER_COLOR}; border: 1px solid white; border-radius: 50% 50% 50% 0; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25); color: white; display: flex; height: 14px; justify-content: center; line-height: 14px; transform: rotate(-45deg); width: 14px;">
             </span>
-            <span>Visited sites</span>
+            <span>Sites</span>
         </div>
         <div style="display: flex; align-items: center; gap: 7px; margin: 2px 0; white-space: nowrap;">
             <span style="align-items: center; background: {TEEN_DHAM_MARKER_COLOR}; border: 1px solid white; border-radius: 50% 50% 50% 0; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25); color: #5a3d00; display: flex; height: 14px; justify-content: center; line-height: 14px; transform: rotate(-45deg); width: 14px;">
             </span>
-            <span>Visited Dham</span>
+            <span>Dham (धाम)</span>
         </div>
         <div style="display: flex; align-items: center; gap: 7px; margin: 2px 0; white-space: nowrap;">
             <span style="align-items: center; background: {JYOTIRLINGA_MARKER_COLOR}; border: 1px solid white; border-radius: 50% 50% 50% 0; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25); color: white; display: flex; height: 14px; justify-content: center; line-height: 14px; transform: rotate(-45deg); width: 14px;">
             </span>
-            <span>Visited jyotirlingha</span>
+            <span>Jyotirlingha (ज्योतिर्लिङ्ग)</span>
         </div>
     </div>
     """
