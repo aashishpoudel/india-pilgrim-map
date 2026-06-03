@@ -599,12 +599,77 @@ def add_route_arrows(map_obj, route_points):
             arrow_locations.append(arrow_location)
 
 
+def add_fixed_legend(map_obj):
+    legend_html = f"""
+    <div>
+        <div style="display: flex; align-items: center; gap: 7px; margin: 2px 0; white-space: nowrap;">
+            <span style="align-items: center; background: {DEFAULT_MARKER_COLOR}; border: 1px solid white; border-radius: 50% 50% 50% 0; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25); color: white; display: flex; height: 14px; justify-content: center; line-height: 14px; transform: rotate(-45deg); width: 14px;">
+            </span>
+            <span>Visited sites</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 7px; margin: 2px 0; white-space: nowrap;">
+            <span style="align-items: center; background: {TEEN_DHAM_MARKER_COLOR}; border: 1px solid white; border-radius: 50% 50% 50% 0; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25); color: #5a3d00; display: flex; height: 14px; justify-content: center; line-height: 14px; transform: rotate(-45deg); width: 14px;">
+            </span>
+            <span>Visited Dham</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 7px; margin: 2px 0; white-space: nowrap;">
+            <span style="align-items: center; background: {JYOTIRLINGA_MARKER_COLOR}; border: 1px solid white; border-radius: 50% 50% 50% 0; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25); color: white; display: flex; height: 14px; justify-content: center; line-height: 14px; transform: rotate(-45deg); width: 14px;">
+            </span>
+            <span>Visited jyotirlingha</span>
+        </div>
+    </div>
+    """
+    map_obj.get_root().script.add_child(folium.Element(f"""
+    (function() {{
+        function addPilgrimLegend() {{
+            var existing = document.getElementById("pilgrim-map-legend-fixed");
+            if (existing) {{
+                existing.remove();
+            }}
+
+            var legend = document.createElement("div");
+            legend.id = "pilgrim-map-legend-fixed";
+            legend.innerHTML = {json.dumps(legend_html)};
+            legend.style.position = "fixed";
+            legend.style.top = "12px";
+            legend.style.right = "70px";
+            legend.style.zIndex = "2147483647";
+            legend.style.background = "rgba(255, 255, 255, 0.98)";
+            legend.style.border = "2px solid rgba(0, 0, 0, 0.45)";
+            legend.style.borderRadius = "4px";
+            legend.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.35)";
+            legend.style.color = "#111";
+            legend.style.fontFamily = "Arial, sans-serif";
+            legend.style.fontSize = "13px";
+            legend.style.lineHeight = "18px";
+            legend.style.padding = "8px 10px";
+            legend.style.pointerEvents = "auto";
+            document.body.appendChild(legend);
+        }}
+
+        if (document.readyState === "loading") {{
+            document.addEventListener("DOMContentLoaded", addPilgrimLegend);
+        }} else {{
+            addPilgrimLegend();
+        }}
+        window.setTimeout(addPilgrimLegend, 500);
+    }})();
+    """))
+
 def create_map(photo_infos, output_html, states_geojson=None):
     india_map = folium.Map(
         location=[22.5, 79.0],
         zoom_start=5,
-        tiles="CartoDB positron"
+        tiles="CartoDB positron",
+        control_scale=True
     )
+    for child in india_map._children.values():
+        if isinstance(child, folium.raster_layers.TileLayer):
+            child.show = True
+            child.overlay = True
+            child.control = False
+
+    add_fixed_legend(india_map)
     india_map.get_root().html.add_child(folium.Element("""
     <script>
         window.sitePhotoIndexes = window.sitePhotoIndexes || {};
