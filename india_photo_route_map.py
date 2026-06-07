@@ -776,7 +776,7 @@ def add_fixed_title(map_obj):
         #pilgrim-map-title-fixed {
             font-size: 12px !important;
             line-height: 18px !important;
-            padding: 4px 8px !important;
+            padding: 0 !important;
         }
 
         @media (max-width: 700px) {
@@ -787,7 +787,7 @@ def add_fixed_title(map_obj):
                 transform: none !important;
                 font-size: 10px !important;
                 line-height: 15px !important;
-                padding: 3px 5px !important;
+                padding: 0 !important;
                 white-space: normal !important;
             }
 
@@ -817,17 +817,18 @@ def add_fixed_title(map_obj):
             title.style.top = "12px";
             title.style.left = "50%";
             title.style.transform = "translateX(-50%)";
-            title.style.zIndex = "2147483646";
-            title.style.background = "rgba(255, 255, 255, 0.96)";
-            title.style.border = "1px solid rgba(0, 0, 0, 0.3)";
-            title.style.borderRadius = "4px";
-            title.style.boxShadow = "0 1px 5px rgba(0, 0, 0, 0.25)";
+            title.style.zIndex = "750";
+            title.style.background = "transparent";
+            title.style.border = "none";
+            title.style.borderRadius = "0";
+            title.style.boxShadow = "none";
             title.style.color = "#111";
             title.style.fontFamily = "Arial, sans-serif";
             title.style.fontSize = "15px";
             title.style.lineHeight = "24px";
-            title.style.padding = "7px 14px";
+            title.style.padding = "0";
             title.style.textAlign = "center";
+            title.style.textShadow = "0 0 3px white, 0 0 5px white";
             title.style.whiteSpace = "nowrap";
             title.style.pointerEvents = "none";
             document.body.appendChild(title);
