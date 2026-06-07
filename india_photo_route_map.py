@@ -711,12 +711,12 @@ def add_fixed_legend(map_obj):
         <div style="display: flex; align-items: center; gap: 7px; margin: 2px 0; white-space: nowrap;">
             <span style="align-items: center; background: {TEEN_DHAM_MARKER_COLOR}; border: 1px solid white; border-radius: 50% 50% 50% 0; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25); color: #5a3d00; display: flex; height: 14px; justify-content: center; line-height: 14px; transform: rotate(-45deg); width: 14px;">
             </span>
-            <span>Dham (धाम)</span>
+            <span>Dham</span>
         </div>
         <div style="display: flex; align-items: center; gap: 7px; margin: 2px 0; white-space: nowrap;">
             <span style="align-items: center; background: {JYOTIRLINGA_MARKER_COLOR}; border: 1px solid white; border-radius: 50% 50% 50% 0; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25); color: white; display: flex; height: 14px; justify-content: center; line-height: 14px; transform: rotate(-45deg); width: 14px;">
             </span>
-            <span>Jyotirlingha (ज्योतिर्लिङ्ग)</span>
+            <span>Jyotirlinga</span>
         </div>
     </div>
     """
@@ -766,10 +766,17 @@ def add_fixed_title(map_obj):
     map_obj.get_root().header.add_child(folium.Element("""
     <style>
         #pilgrim-map-legend-fixed {
-            font-size: 11px !important;
-            line-height: 15px !important;
-            padding: 5px 7px !important;
+            font-size: 9px !important;
+            line-height: 12px !important;
+            min-width: 58px !important;
+            padding: 4px 5px !important;
             border-width: 1px !important;
+        }
+
+        #pilgrim-map-title-fixed {
+            font-size: 12px !important;
+            line-height: 18px !important;
+            padding: 4px 8px !important;
         }
 
         @media (max-width: 700px) {
@@ -778,18 +785,19 @@ def add_fixed_title(map_obj):
                 left: 8px !important;
                 right: 8px !important;
                 transform: none !important;
-                font-size: 12px !important;
-                line-height: 18px !important;
-                padding: 5px 7px !important;
+                font-size: 10px !important;
+                line-height: 15px !important;
+                padding: 3px 5px !important;
                 white-space: normal !important;
             }
 
             #pilgrim-map-legend-fixed {
-                top: 61px !important;
+                top: 52px !important;
                 right: 8px !important;
-                font-size: 10px !important;
-                line-height: 13px !important;
-                padding: 4px 6px !important;
+                font-size: 8px !important;
+                line-height: 11px !important;
+                min-width: 52px !important;
+                padding: 3px 4px !important;
             }
         }
     </style>
