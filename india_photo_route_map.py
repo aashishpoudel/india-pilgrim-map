@@ -757,6 +757,53 @@ def add_fixed_legend(map_obj):
     }})();
     """))
 
+
+def add_fixed_title(map_obj):
+    title_html = """
+    <div style="font-weight: 700;">Narayan Punyawati India Pilgrim Tour 2026</div>
+    <div style="font-weight: 600;">नारायण पुण्यवती धार्मिक भ्रमण २०८२</div>
+    """
+    map_obj.get_root().script.add_child(folium.Element(f"""
+    (function() {{
+        function addPilgrimMapTitle() {{
+            var existing = document.getElementById("pilgrim-map-title-fixed");
+            if (existing) {{
+                existing.remove();
+            }}
+
+            var title = document.createElement("div");
+            title.id = "pilgrim-map-title-fixed";
+            title.innerHTML = {json.dumps(title_html)};
+            title.style.position = "fixed";
+            title.style.top = "12px";
+            title.style.left = "50%";
+            title.style.transform = "translateX(-50%)";
+            title.style.zIndex = "2147483646";
+            title.style.background = "rgba(255, 255, 255, 0.96)";
+            title.style.border = "1px solid rgba(0, 0, 0, 0.3)";
+            title.style.borderRadius = "4px";
+            title.style.boxShadow = "0 1px 5px rgba(0, 0, 0, 0.25)";
+            title.style.color = "#111";
+            title.style.fontFamily = "Arial, sans-serif";
+            title.style.fontSize = "15px";
+            title.style.lineHeight = "24px";
+            title.style.padding = "7px 14px";
+            title.style.textAlign = "center";
+            title.style.whiteSpace = "nowrap";
+            title.style.pointerEvents = "none";
+            document.body.appendChild(title);
+        }}
+
+        if (document.readyState === "loading") {{
+            document.addEventListener("DOMContentLoaded", addPilgrimMapTitle);
+        }} else {{
+            addPilgrimMapTitle();
+        }}
+        window.setTimeout(addPilgrimMapTitle, 500);
+    }})();
+    """))
+
+
 def create_map(photo_infos, output_html, states_geojson=None):
     india_map = folium.Map(
         location=[22.5, 79.0],
@@ -771,6 +818,7 @@ def create_map(photo_infos, output_html, states_geojson=None):
             child.control = False
 
     add_fixed_legend(india_map)
+    add_fixed_title(india_map)
     india_map.get_root().html.add_child(folium.Element("""
     <script>
         window.sitePhotoIndexes = window.sitePhotoIndexes || {};
