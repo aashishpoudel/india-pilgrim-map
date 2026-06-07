@@ -763,6 +763,37 @@ def add_fixed_title(map_obj):
     <div style="font-weight: 700;">Narayan Punyawati India Pilgrim Tour 2026</div>
     <div style="font-weight: 600;">नारायण पुण्यवती धार्मिक भ्रमण २०८२</div>
     """
+    map_obj.get_root().header.add_child(folium.Element("""
+    <style>
+        #pilgrim-map-legend-fixed {
+            font-size: 11px !important;
+            line-height: 15px !important;
+            padding: 5px 7px !important;
+            border-width: 1px !important;
+        }
+
+        @media (max-width: 700px) {
+            #pilgrim-map-title-fixed {
+                top: 7px !important;
+                left: 8px !important;
+                right: 8px !important;
+                transform: none !important;
+                font-size: 12px !important;
+                line-height: 18px !important;
+                padding: 5px 7px !important;
+                white-space: normal !important;
+            }
+
+            #pilgrim-map-legend-fixed {
+                top: 61px !important;
+                right: 8px !important;
+                font-size: 10px !important;
+                line-height: 13px !important;
+                padding: 4px 6px !important;
+            }
+        }
+    </style>
+    """))
     map_obj.get_root().script.add_child(folium.Element(f"""
     (function() {{
         function addPilgrimMapTitle() {{
