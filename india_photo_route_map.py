@@ -963,12 +963,12 @@ def build_site_popup(site, site_number, matched_site_name=None, place_label=None
         if image_uri:
             image_html = (
                 f'<img src="{image_uri}" '
-                'style="width: 380px; max-height: 315px; object-fit: contain; '
+                'style="width: 340px; max-height: 275px; object-fit: contain; '
                 'display: block; margin: 6px 0; border-radius: 4px;">'
             )
         else:
             image_html = (
-                '<div style="width: 380px; padding: 107px 0; margin: 6px 0; '
+                '<div style="width: 340px; padding: 88px 0; margin: 6px 0; '
                 'text-align: center; background: #f2f2f2; color: #555; '
                 'border-radius: 4px;">Photo preview unavailable</div>'
             )
@@ -995,7 +995,7 @@ def build_site_popup(site, site_number, matched_site_name=None, place_label=None
     english_journal = build_journal_entries_html(site_journal_entries, "english")
 
     return f"""
-    <div class="pilgrim-popup-tabs" style="width: 390px;">
+    <div class="pilgrim-popup-tabs" style="width: 350px;">
         <b>{popup_title}</b><br>
         <div class="pilgrim-popup-tab-buttons" role="tablist" aria-label="Site popup tabs">
             <button class="pilgrim-popup-tab active" type="button" onclick="showSitePopupTab('{popup_id}', 'pictures', this)">Pictures</button>
@@ -1350,7 +1350,7 @@ def create_map(photo_infos, output_html, states_geojson=None):
 
         .pilgrim-popup-panel {
             display: none;
-            height: 405px;
+            height: 355px;
             overflow: hidden;
         }
 
@@ -1379,6 +1379,41 @@ def create_map(photo_infos, output_html, states_geojson=None):
             line-height: 15px;
             margin-top: 4px;
             overflow-wrap: anywhere;
+        }
+
+        @media (max-width: 600px) {
+            .leaflet-popup-content {
+                margin: 9px 10px !important;
+                width: min(76vw, 300px) !important;
+            }
+
+            .pilgrim-popup-tabs {
+                font-size: 11px;
+                width: min(76vw, 300px) !important;
+            }
+
+            .pilgrim-popup-tabs img,
+            .pilgrim-popup-tabs .pilgrim-photo-missing {
+                width: 100% !important;
+                max-height: 210px !important;
+            }
+
+            .pilgrim-popup-panel {
+                height: 286px !important;
+            }
+
+            .pilgrim-popup-tab {
+                font-size: 11px !important;
+                min-height: 30px !important;
+                padding: 5px 3px !important;
+            }
+
+            .pilgrim-popup-photo-meta,
+            .pilgrim-popup-journal-entry p,
+            .pilgrim-popup-empty {
+                font-size: 10px !important;
+                line-height: 13px !important;
+            }
         }
 
         .pilgrim-popup-journal-entry {
@@ -1543,7 +1578,7 @@ def create_map(photo_infos, output_html, states_geojson=None):
             location=[lat, lon],
             popup=folium.Popup(
                 build_site_popup(site, site_number, matched_site_name, place_label),
-                max_width=430
+                max_width=390
             ),
             tooltip=tooltip,
             icon=build_site_icon(site_category, marker_rotation(site, site_category)),
